@@ -9,10 +9,11 @@ export class Recorder {
     })
   }
 
-  start(during: number, onstop: (url: string) => any): void {
+  start(duration: number, onstop: (url: string) => any): void {
     const data: Blob[] = []
     this.recorder.ondataavailable = (event: BlobEvent) => {
-      if (event.data && event.data.size > 0) data.push(event.data)
+      if (event.data && event.data.size > 0)
+        data.push(event.data)
     }
     this.recorder.onstop = () => {
       const url = URL.createObjectURL(
@@ -26,6 +27,6 @@ export class Recorder {
 
     window.setTimeout(() => {
       this.recorder.stop()
-    }, during)
+    }, duration)
   }
 }

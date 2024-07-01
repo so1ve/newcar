@@ -3,11 +3,11 @@ import { colorParsley, colorToHex, colorToRGB } from 'colorparsley'
 export type ColorRgba = [r: number, g: number, b: number, alpha: number]
 
 export class Color {
-  private constructor(
-    readonly red: number,
-    readonly green: number,
-    readonly blue: number,
-    readonly alpha: number = 1,
+  constructor(
+    public red: number,
+    public green: number,
+    public blue: number,
+    public alpha: number = 1,
   ) {}
 
   withAlpha(newAlpha: number): Color {
@@ -49,8 +49,8 @@ export class Color {
    * @param alpha The ALPHA component.  (0.~1.)
    * @returns The color.
    */
-  static rgbaFloat(r: number, g: number, b: number, alpha?: number): Color {
-    return Color.rgba(r * 255, g * 255, b * 255, alpha)
+  static rgbaFloat(red: number, green: number, blue: number, alpha?: number): Color {
+    return Color.rgba(red * 255, green * 255, blue * 255, alpha)
   }
 
   /**
@@ -95,7 +95,7 @@ export class Color {
 
   /**
    *
-   * @returns
+   * @returns color string
    */
   toString(): string {
     return this.toRgba()
@@ -134,6 +134,15 @@ export class Color {
     return new Color(r, g, b, a)
   }
 
-  static readonly WHITE = Color.rgba(255, 255, 255)
-  static readonly BLACK = Color.rgba(0, 0, 0)
+  static get WHITE() {
+    return Color.rgba(255, 255, 255)
+  }
+
+  static get BLACK() {
+    return Color.rgba(0, 0, 0)
+  }
+
+  static get TRANSPARENT() {
+    return Color.rgba(0, 0, 0, 0)
+  }
 }

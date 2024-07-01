@@ -1,6 +1,7 @@
 import type {
   Canvas,
   CanvasKit,
+  Paragraph,
   ParagraphBuilder,
   TextStyle,
 } from 'canvaskit-wasm'
@@ -10,11 +11,11 @@ import { Color } from '@newcar/utils'
 
 export interface MarkdownOptions extends WidgetOptions {
   textStyle?: TextStyle
-  width?: number // 宽度用于布局和换行
+  width?: number
 }
 
 export class Markdown extends Widget {
-  private paragraph: any // 这将是CanvasKit的Paragraph对象
+  private paragraph: Paragraph
   private textStyle: TextStyle
   private width: number
 
@@ -24,7 +25,7 @@ export class Markdown extends Widget {
       color: Color.WHITE.toFloat4(),
       fontSize: 16,
     }
-    this.width = options.width || 500 // 默认宽度
+    this.width = options.width || 500
   }
 
   init(ck: CanvasKit): void {
@@ -51,22 +52,8 @@ export class Markdown extends Widget {
   }
 
   predraw(ck: CanvasKit, propertyChanged: string): void {
-    // 重新构建段落当文本或样式更改
     if (propertyChanged === 'text' || propertyChanged.match('textStyle.'))
-      this.buildParagraph(ck)
-  }
-
-  private buildParagraph(ck: CanvasKit) {
-    const paragraphStyle = new ck.ParagraphStyle({
-      textStyle: this.textStyle,
-    })
-    const builder = ck.ParagraphBuilder.Make(
-      paragraphStyle,
-      ck.FontMgr.FromData(...$source.fonts)!,
-    )
-    this.parseMarkdown(this.text, builder, ck)
-    this.paragraph = builder.build()
-    this.paragraph.layout(this.width)
+      this.init(ck)
   }
 
   private parseMarkdown(
@@ -74,59 +61,82 @@ export class Markdown extends Widget {
     builder: ParagraphBuilder,
     ck: CanvasKit,
   ) {
-    console.log('parse')
+    const parseInline = (line: string, currentStyle: TextStyle, ck: CanvasKit, builder: ParagraphBuilder, startIndex: number = 0) => {
+      const regex = /\*\*(.*?)\*\*|__(.*?)__|\*(.*?)\*|_(.*?)_|~~(.*?)~~|\+\+(.*?)\+\+|`(.*?)`/
+      const match = regex.exec(line.substring(startIndex))
+
+      if (!match) {
+        builder.addText(line.substring(startIndex))
+        return
+      }
+      if (match.index + startIndex > startIndex)
+        builder.addText(line.substring(startIndex, match.index + startIndex))
+
+      const matchedText = match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5] ?? match[6] ?? match[7]
+      const styleUpdate = { ...currentStyle }
+
+      if (match[0].startsWith('**') || match[0].startsWith('__'))
+        styleUpdate.fontStyle = { ...(styleUpdate.fontStyle || {}), weight: ck.FontWeight.Bold }
+      else if (match[0].startsWith('*') || match[0].startsWith('_'))
+        styleUpdate.fontStyle = { ...(styleUpdate.fontStyle || {}), slant: ck.FontSlant.Italic }
+      else if (match[0].startsWith('~~'))
+        styleUpdate.decoration = ck.LineThroughDecoration
+      else if (match[0].startsWith('++'))
+        styleUpdate.decoration = ck.UnderlineDecoration
+      else if (match[0].startsWith('`'))
+        styleUpdate.backgroundColor = ck.Color(211, 211, 211, 0.3)
+      builder.pushStyle(new ck.TextStyle(styleUpdate))
+      builder.addText(matchedText)
+      builder.pop()
+      parseInline(line, currentStyle, ck, builder, match.index + match[0].length + startIndex)
+    }
 
     const lines = text.split('\n')
     lines.forEach((line) => {
-      if (line.match('# ')) {
-        builder.pushStyle(
-          new ck.TextStyle({
-            fontSize: 24,
-            color: this.textStyle.color,
-          }),
-        )
-        console.log('Is the 1!')
-
-        builder.addText(line.slice(2))
+      if (line.startsWith('# ')) {
+        const titleStyle = { fontSize: 24, color: this.textStyle.color }
+        builder.pushStyle(new ck.TextStyle(titleStyle))
+        parseInline(line.slice(2), titleStyle, ck, builder)
         builder.pop()
-      } else if (line.match('## ')) {
-        builder.pushStyle(
-          new ck.TextStyle({
-            fontSize: 20,
-            color: this.textStyle.color,
-          }),
-        )
-        builder.addText(line.slice(3))
+      }
+      else if (line.startsWith('## ')) {
+        const titleStyle = { fontSize: 21, color: this.textStyle.color }
+        builder.pushStyle(new ck.TextStyle(titleStyle))
+        parseInline(line.slice(2), titleStyle, ck, builder)
         builder.pop()
-      } else if (line.match('### ')) {
-        builder.pushStyle(
-          new ck.TextStyle({
-            fontSize: 18,
-            color: this.textStyle.color,
-          }),
-        )
-        builder.addText(line.slice(4))
+      }
+      else if (line.startsWith('### ')) {
+        const titleStyle = { fontSize: 18, color: this.textStyle.color }
+        builder.pushStyle(new ck.TextStyle(titleStyle))
+        parseInline(line.slice(2), titleStyle, ck, builder)
         builder.pop()
-      } else if (
-        line.match('- ') !== null ||
-        line.match(/\* /) !== null ||
-        line.match(/\+/) !== null
-      ) {
-        builder.addText(`• ${line.slice(2)}`)
-      } else if (line.match(/\!\[/)) {
-        this.handleImage(line, builder, ck)
-      } else if (line.match(/\[/)) {
-        builder.pushStyle(
-          new ck.TextStyle({
-            color: ck.BLUE,
-          }),
-        )
-        builder.addText(
-          line.replace(/\[/, '').replace(/\]/, '').replace(/(.+)/, ''),
-        )
+      }
+      else if (line.startsWith('#### ')) {
+        const titleStyle = { fontSize: 15, color: this.textStyle.color }
+        builder.pushStyle(new ck.TextStyle(titleStyle))
+        parseInline(line.slice(2), titleStyle, ck, builder)
         builder.pop()
-      } else {
-        builder.addText(line)
+      }
+      else if (line.startsWith('##### ')) {
+        const titleStyle = { fontSize: 12, color: this.textStyle.color }
+        builder.pushStyle(new ck.TextStyle(titleStyle))
+        parseInline(line.slice(2), titleStyle, ck, builder)
+        builder.pop()
+      }
+      else if (line.startsWith('###### ')) {
+        const titleStyle = { fontSize: 9, color: this.textStyle.color }
+        builder.pushStyle(new ck.TextStyle(titleStyle))
+        parseInline(line.slice(2), titleStyle, ck, builder)
+        builder.pop()
+      }
+      else if (line.match(/( +)?- .+/) || line.match(/( +)? \+.+/) || line.match(/( +)? \* .+/)) {
+        const listStyle = { fontSize: 16, color: this.textStyle.color }
+        builder.pushStyle(new ck.TextStyle(listStyle))
+        parseInline(line.replace(/(.+)?([\-*+])/, '·'), listStyle, ck, builder)
+        builder.pop()
+      }
+      else {
+        parseInline(line, this.textStyle, ck, builder)
       }
       builder.addText('\n')
     })
@@ -135,15 +145,13 @@ export class Markdown extends Widget {
   private handleImage(
     markdownLine: string,
     builder: ParagraphBuilder,
-    ck: CanvasKit,
+    _ck: CanvasKit,
   ) {
     const regex = /!\[(.*?)\]\((.*?)\)/
     const match = markdownLine.match(regex)
     if (match) {
       const altText = match[1]
       const imageUrl = match[2]
-      // 示例中不包含如何在CanvasKit中处理图像，这里只是一个占位符
-      // 实际应用中可能需要加载图像并创建一个图像着色器
       builder.addText(`[Image: ${altText} at ${imageUrl}]`)
     }
   }

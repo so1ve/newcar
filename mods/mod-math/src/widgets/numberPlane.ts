@@ -1,125 +1,179 @@
-import type { WidgetOptions, WidgetStyle } from '@newcar/core'
-import { Widget } from '@newcar/core'
+import { Arrow, Line, Text } from '@newcar/basic'
+import type { ConvertToProp, Reactive, Ref, WidgetOptions, WidgetStyle } from '@newcar/core'
+import { Widget, changed, reactive, ref } from '@newcar/core'
 import { Color } from '@newcar/utils'
-import type { LineOptions } from '@newcar/basic'
-import { Line, Text } from '@newcar/basic'
-import { NumberAxis } from './numberAxis'
-import type { NumberAxisOptions } from './numberAxis'
+import type { Trend } from './numberAxis'
 
 export interface NumberPlaneOptions extends WidgetOptions {
   style?: NumberPlaneStyle
-  axisXOptions?: NumberAxisOptions
-  axisYOptions?: NumberAxisOptions
-  gridOptions?: LineOptions
-  grid?: boolean
-  unit?: boolean
-  unitFont?: string
+  divisionX?: number
+  divisionY?: number
+  trendsX?: Trend
+  trendsY?: Trend
 }
 
 export interface NumberPlaneStyle extends WidgetStyle {
+  colorX?: Color
+  colorY?: Color
+  textColorX?: Color
+  textColorY?: Color
+  textSizeX?: number
+  textSizeY?: number
+  textsX?: boolean
+  textsY?: boolean
+  ticksX?: boolean
+  ticksY?: boolean
+  tickColorX?: Color
+  tickColorY?: Color
+  grid?: boolean
   gridColor?: Color
+  gridWidth?: number
 }
 
 export class NumberPlane extends Widget {
-  declare style: NumberPlaneStyle
-  axisXOptions: NumberAxisOptions
-  axisYOptions: NumberAxisOptions
-  gridOptions: LineOptions
-  axisX: NumberAxis
-  axisY: NumberAxis
-  grid: boolean
-  unit = false
-  unitFont: string
-  private gridUnitsX: Line[] = []
-  private gridUnitsY: Line[] = []
-  private unitsX: Text[] = []
-  private unitsY: Text[] = []
+  declare style: ConvertToProp<NumberPlaneStyle>
+  axisX: Arrow
+  axisY: Arrow
+  ticksX: Line[] = []
+  ticksY: Line[] = []
+  textsX: Text[] = []
+  textsY: Text[] = []
+  grid: Line[] = []
+  divisionX: Ref<number>
+  divisionY: Ref<number>
+  trendX: Ref<Trend>
+  trendY: Ref<Trend>
+  originText: Text
+  lengthX: Reactive<[number, number]>
+  lengthY: Reactive<[number, number]>
 
-  constructor(
-    public fromX: number,
-    public toX: number,
-    public fromY: number,
-    public toY: number,
-    options?: NumberPlaneOptions,
-  ) {
+  constructor(lengthX: [number, number], lengthY: [number, number], public options?: NumberPlaneOptions) {
     options ??= {}
-    super(options)
-    this.axisXOptions = options.axisXOptions ?? {}
-    this.axisYOptions = {
-      style: {
-        rotation: -90,
-      },
-      ...options.axisYOptions,
-    }
-    this.grid = options.grid ?? true
-    this.unit = options.unit ?? false
-    this.unitFont = options.unitFont!
-    this.axisX = new NumberAxis(this.fromX, this.toX, this.axisXOptions)
-    this.axisY = new NumberAxis(this.fromY, this.toY, this.axisYOptions)
-    this.gridOptions = options.gridOptions ?? {}
-    let counter =
-      (this.fromX - (this.fromX % this.axisX.interval)) / this.axisX.interval
-    for (
-      let x = this.axisX.from;
-      x <= this.axisX.to;
-      x += this.axisX.interval
-    ) {
-      this.gridUnitsY.push(
-        new Line([x, this.axisY.from], [x, this.axisY.to], {
-          style: {
-            width: 1,
-          },
-        }),
-      )
-      this.unitsX.push(
-        new Text(
-          [
-            {
-              text: counter.toString(),
-              style: {
-                fontSize: 20,
-              },
-            },
-          ],
-          {
-            x,
-            y: 10,
-          },
-        ),
-      )
-      counter += 1
-    }
-    counter =
-      (this.fromY - (this.fromY % this.axisY.interval)) / this.axisY.interval
-    for (
-      let y = this.axisY.from;
-      y <= this.axisY.to;
-      y += this.axisY.interval
-    ) {
-      this.gridUnitsX.push(
-        new Line([this.axisX.from, y], [this.axisX.to, y], {
-          style: {
-            width: 1,
-          },
-        }),
-      )
-      this.unitsY.push(
-        new Text([{ text: counter.toString(), style: { fontSize: 20 } }], {
-          y,
-          x: 5,
-        }),
-      )
-      counter += 1
-    }
-    this.add(
-      this.axisX,
-      this.axisY,
-      ...this.unitsX,
-      ...this.unitsY,
-      ...this.gridUnitsX,
-      ...this.gridUnitsY,
-    )
     options.style ??= {}
-    this.style.gridColor = options.style.gridColor ?? Color.WHITE
+    super(options)
+
+    this.lengthX = reactive(lengthX)
+    this.lengthY = reactive(lengthY)
+    this.divisionX = ref(options.divisionX ?? 50)
+    this.divisionY = ref(options.divisionY ?? 50)
+    this.trendX = ref(options.trendsX ?? (x => x / 50))
+    this.trendY = ref(options.trendsY ?? (x => x / 50))
+    this.style.colorX = reactive(options.style?.colorX ?? Color.WHITE)
+    this.style.colorY = reactive(options.style?.colorY ?? Color.WHITE)
+    this.style.textColorX = reactive(options.style?.textColorX ?? Color.WHITE)
+    this.style.textColorY = reactive(options.style?.textColorY ?? Color.WHITE)
+    this.style.textSizeX = ref(options.style?.textSizeX ?? 20)
+    this.style.textSizeY = ref(options.style?.textSizeY ?? 20)
+    this.style.textsX = ref(options.style?.textsX ?? true)
+    this.style.textsY = ref(options.style?.textsY ?? true)
+    this.style.ticksX = ref(options.style?.ticksX ?? true)
+    this.style.ticksY = ref(options.style?.ticksY ?? true)
+    this.style.tickColorX = reactive(options.style?.tickColorX ?? Color.WHITE)
+    this.style.tickColorY = reactive(options.style?.tickColorY ?? Color.WHITE)
+    this.style.grid = ref(options.style?.grid ?? true)
+    this.style.gridColor = reactive(options.style?.gridColor ?? Color.WHITE)
+    this.style.gridWidth = ref(options.style?.gridWidth ?? 1)
+    this.axisX = new Arrow([this.lengthX[0], 0], [this.lengthX[1], 0], { style: { color: options.style.colorX } })
+    this.axisY = new Arrow([0, this.lengthY[1]], [0, this.lengthY[0]], { style: { color: options.style.colorY } })
+
+    this.createTicksAndTexts()
+
+    this.originText = new Text(this.trendX.value(0).toString(), {
+      x: this.style.textSizeX.value / 4,
+      y: this.style.textSizeX.value / 4,
+      style: {
+        fontSize: this.style.textSizeX.value,
+        fillColor: this.style.textColorX,
+        rotation: -this.style.rotation.value,
+      },
+    })
+
+    this.add(this.axisX, this.axisY, ...this.ticksX, ...this.ticksY, ...this.textsX, ...this.textsY, ...this.grid, this.originText)
+
+    this.setupReactiveChanges()
+  }
+
+  private createTicksAndTexts() {
+    for (let x = this.lengthX[0] + (this.lengthX[1] - this.lengthX[0]) % this.divisionX.value; x <= this.lengthX[1]; x += this.divisionX.value) {
+      if (this.style.ticksX.value) {
+        this.ticksX.push(new Line([x, -5], [x, 5], { style: { color: this.options.style.tickColorX } }))
+      }
+      if (x !== 0 && this.style.textsX.value) {
+        this.textsX.push(new Text(this.trendX.value(x).toString(), {
+          x: x - (this.style.textSizeX.value / 2),
+          y: 10,
+          style: {
+            fontSize: this.style.textSizeX.value,
+            fillColor: this.options.style.textColorX,
+            rotation: -this.style.rotation.value,
+          },
+        }))
+      }
+      if (this.style.grid.value) {
+        this.grid.push(new Line([x, this.lengthY[0]], [x, this.lengthY[1]], {
+          style: {
+            color: this.options.style.gridColor,
+            width: this.style.gridWidth.value,
+          },
+          progress: this.progress.value,
+        }))
+      }
+    }
+
+    for (let y = this.lengthY[0] + (this.lengthY[1] - this.lengthY[0]) % this.divisionY.value; y <= this.lengthY[1]; y += this.divisionY.value) {
+      if (this.style.ticksY.value) {
+        this.ticksY.push(new Line([-5, y], [5, y], { style: { color: this.options.style.tickColorY } }))
+      }
+      if (y !== 0 && this.style.textsY.value) {
+        this.textsY.push(new Text(this.trendY.value(y).toString(), {
+          x: 10,
+          y: (this.style.textSizeY.value / 2) - y,
+          style: {
+            fontSize: this.style.textSizeY.value,
+            fillColor: this.style.textColorY,
+            rotation: -this.style.rotation.value,
+          },
+        }))
+      }
+      if (this.style.grid.value) {
+        this.grid.push(new Line([this.lengthX[0], y], [this.lengthX[1], y], {
+          style: {
+            color: this.options.style.gridColor,
+            width: this.style.gridWidth.value,
+          },
+          progress: this.progress.value,
+        }))
+      }
+    }
+  }
+
+  private setupReactiveChanges() {
+    changed(this.style.colorX, v => this.axisX.style.color = v)
+    changed(this.style.colorY, v => this.axisY.style.color = v)
+    changed(this.style.textColorX, v => this.textsX.forEach(text => text.style.fillColor = v))
+    changed(this.style.textColorY, v => this.textsY.forEach(text => text.style.fillColor = v))
+    changed(this.style.textSizeX, v => this.textsX.forEach(text => text.style.fontSize = v))
+    changed(this.style.textSizeY, v => this.textsY.forEach(text => text.style.fontSize = v))
+    changed(this.style.tickColorX, v => this.ticksX.forEach(tick => tick.style.color = v))
+    changed(this.style.tickColorY, v => this.ticksY.forEach(tick => tick.style.color = v))
+    changed(this.style.gridColor, v => this.grid.forEach(gridItem => gridItem.style.color = v))
+    changed(this.style.gridWidth, v => this.grid.forEach(gridItem => gridItem.style.width = v))
+    changed(this.progress, (v) => {
+      this.axisX.progress.value = v.value
+      this.axisY.progress.value = v.value
+      this.ticksX.forEach(tick => tick.progress.value = v.value)
+      this.grid.forEach(gridItem => gridItem.progress.value = v.value)
+    })
+    changed(this.style.rotation, (v) => {
+      this.textsX.forEach(text => text.style.rotation.value = -v.value)
+      this.textsY.forEach(text => text.style.rotation.value = -v.value)
+      this.originText.style.rotation.value = -v.value
+    })
+    changed(this.divisionX, this.createTicksAndTexts.bind(this))
+    changed(this.divisionY, this.createTicksAndTexts.bind(this))
+    changed(this.trendX, this.createTicksAndTexts.bind(this))
+    changed(this.trendY, this.createTicksAndTexts.bind(this))
+    changed(this.lengthX, length => [this.axisX.from[0], this.axisX.to[1]] = length)
+    changed(this.lengthY, length => [this.axisY.from[0], this.axisY.to[1]] = length)
   }
 }

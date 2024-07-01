@@ -1,18 +1,45 @@
 import type { Widget } from './widget'
 
-export interface Event {
+/**
+ * The event interface.
+ */
+export interface Event<T> {
+  /**
+   * The operation when set event.
+   * @param widget The widget's self.
+   * @param effect The effect function of this widget.
+   * @param element The canvas element of this app.
+   * @returns
+   */
   operation: (
-    widget: Widget,
+    widget: T,
     effect: (widget: Widget, ...arg: any[]) => any,
     element: HTMLCanvasElement,
   ) => void
+
+  /**
+   * The effect function of this event. Only used in the widget-based event.
+   * @param widget The widget's self.
+   * @param args The external arguments.
+   * @returns
+   */
+  effects?: ((widget: Widget, ...arg: any[]) => any)[]
 }
 
-export function defineEvent(event: Event): Event {
+export function defineEvent<T extends Widget>(event: Event<T>): Event<T> {
   return event
 }
 
-export interface EventInstance {
-  event: Event
+export interface EventInstance<T extends Widget> {
+  /**
+   * The event object.
+   */
+  event: Event<T>
+
+  /**
+   * The effected function.
+   * @param widget the widget's self.
+   * @param args The external arguments/
+   */
   effect: (widget: Widget, ...args: []) => any
 }

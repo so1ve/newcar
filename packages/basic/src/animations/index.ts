@@ -1,10 +1,28 @@
-export * from './move'
-export * from './create'
-export * from './destroy'
-export * from './fadeIn'
-export * from './fadeOut'
-export * from './roomIn'
-export * from './roomOut'
-export * from './rotate'
-export * from './scale'
-export * from './stroke'
+export * from './fade/fadeIn'
+export * from './fade/fadeOut'
+
+export * from './zoom/zoomIn'
+export * from './zoom/zoomOut'
+
+export * from './color/discolorate'
+
+export * from './movement/move'
+export * from './movement/rotate'
+export * from './movement/scale'
+
+export * from './creation/create'
+export * from './creation/destroy'
+export * from './creation/stroke'
+export * from './creation/write'
+
+export * from './indicate/flash'
+export * from './indicate/circleIndicate'
+export * from './indicate/focusOn'
+export * from './indicate/rippleOut'
+export * from './indicate/showCreationThenDestructionAround'
+export * from './indicate/showPassingFlashAround'
+export * from './indicate/showPassingCircleFlashAround'
+export * from './indicate/showCircleCreationThenDestructionAround'
+export * from './indicate/wiggle'
+
+// export * from './transform/transform'
